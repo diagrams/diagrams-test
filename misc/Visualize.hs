@@ -2,6 +2,7 @@
 
 import Diagrams.Prelude
 import Diagrams.Backend.Cairo.CmdLine
+import Graphics.Rendering.Diagrams.Points
 
 funs          = map (flip (^)) [2..6]
 visualize f   = showLabels $

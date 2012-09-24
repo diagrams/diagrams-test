@@ -24,7 +24,7 @@ p = fromOffsets [unitX, unitX]
 main = animMain anim
 
 linesTo pt d = d <> mconcat (catMaybes $ map l [0, 1/25 .. tau/2 :: Rad])
-  where l dir = (pt ~~) <$> (traceP pt (e dir) d >>= guard (>0)
+  where l dir = (pt ~~) <$> (traceP pt (e dir) d)
 
 animBez = linesTo (p2 (0,-2)) <$> (| rotateBy ui ~bez |)
 

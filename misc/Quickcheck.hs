@@ -77,3 +77,16 @@ instance NFData R2
 instance NFData v => NFData (Point v) where
     rnf p = rnf $ unPoint p
 
+------------------------------------------------------------
+-- Some unit tests to start with
+
+tests = [
+    testGroup "TwoD.Arc" [
+           testProperty "arc start" $ \s e -> s /= e ==> pathVertices (arc s e :: Path R2) ^? _head . _head =~ Just (origin .+^ fromDirection s)
+-- Second test does not pass, because of arc behavior on > fullTurn
+-- Probably arc code should stay the same, but docs should explain better.
+         , testProperty "arc end" $ \s e -> s /= e ==> pathVertices (arc s e :: Path R2) ^? _head . _last =~ Just (origin .+^ fromDirection e)
+         ]
+    ]
+
+main = defaultMain tests

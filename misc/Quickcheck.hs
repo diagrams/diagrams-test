@@ -69,6 +69,15 @@ instance (Arbitrary v, AdditiveGroup v) => Arbitrary (Point v) where
 
 instance Arbitrary Angle where
     arbitrary = review rad <$> arbitrary
+
+instance (Arbitrary a, Arbitrary (V a), AdditiveGroup (V a)) => Arbitrary (Located a) where
+    arbitrary = at <$> arbitrary <*> arbitrary
+
+instance Arbitrary (Offset Closed R2) where
+    arbitrary = OffsetClosed <$> arbitrary
+
+instance Arbitrary (Segment Closed R2) where
+    arbitrary = oneof [Linear <$> arbitrary, Cubic <$> arbitrary <*> arbitrary <*> arbitrary]
 ------------------------------------------------------------
 -- NFData instances for Paths, all trivial
 
@@ -82,10 +91,36 @@ instance NFData v => NFData (Point v) where
 
 tests = [
     testGroup "TwoD.Arc" [
-           testProperty "arc start" $ \s e -> s /= e ==> pathVertices (arc s e :: Path R2) ^? _head . _head =~ Just (origin .+^ fromDirection s)
--- Second test does not pass, because of arc behavior on > fullTurn
--- Probably arc code should stay the same, but docs should explain better.
-         , testProperty "arc end" $ \s e -> s /= e ==> pathVertices (arc s e :: Path R2) ^? _head . _last =~ Just (origin .+^ fromDirection e)
+           testProperty "arc start point is origin + the starting direction" $ \s e ->
+             s /= e ==>
+               pathVertices (arc s e :: Path R2) ^? _head . _head =~ Just (origin .+^ fromDirection s)
+           , testProperty "arc end point is origin + ending direction, for non-circles" $ \s e ->
+             s /= e && e^-^s < fullTurn ==>
+               pathVertices (arc s e :: Path R2) ^? _head . _last =~ Just (origin .+^ fromDirection e)
+           , testProperty "arc returns a loop when the Angles are more than a fullTurn apart" $ \s e ->
+             e ^-^ s >= fullTurn ==>
+               isLoop $ (arc s e :: Trail R2)
+         ]
+
+    , testGroup "TwoD.Types" [
+         testProperty "R2 vector addition is commutative" $
+           \u v -> (u :: R2) ^+^ v =~ v ^+^ u
+         , testProperty "R2 subtraction is the inverse of addition" $
+           \u v -> u ^+^ v ^-^ v =~ (u :: R2)
+         , testProperty "R2 vector negation squared is identity" $
+           \u -> negateV (negateV (u :: R2)) =~ u
+         ]
+    , testGroup "Angle" [
+         testProperty "2π radians per turn" $
+           \θ -> θ^.rad =~ θ^.turn*2*pi
+         , testProperty "360 degrees per turn" $
+           \θ -> θ^.deg =~ θ^.turn*360
+         , testProperty "Angle vector addition is commutative" $
+           \θ φ -> (θ :: Angle) ^+^ φ =~ φ ^+^ θ
+         , testProperty "Angle subtraction is the inverse of addition" $
+           \θ φ -> (θ :: Angle) ^+^ φ ^-^ φ =~ θ
+         , testProperty "Angle vector negation squared is identity" $
+           \θ -> negateV (negateV (θ :: Angle)) =~ θ
          ]
     ]
 

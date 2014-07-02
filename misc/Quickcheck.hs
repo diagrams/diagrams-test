@@ -70,6 +70,12 @@ instance (Arbitrary v, AdditiveGroup v) => Arbitrary (Point v) where
 instance Arbitrary Angle where
     arbitrary = review rad <$> arbitrary
 
+instance Arbitrary (Direction R2) where
+    arbitrary = rotate <$> arbitrary <*> pure xDir
+
+instance Show (Direction R2) where
+    show d = "Dir" <> ( show $ d ^. _theta . turn )
+
 instance (Arbitrary a, Arbitrary (V a), AdditiveGroup (V a)) => Arbitrary (Located a) where
     arbitrary = at <$> arbitrary <*> arbitrary
 
@@ -91,15 +97,10 @@ instance NFData v => NFData (Point v) where
 
 tests = [
     testGroup "TwoD.Arc" [
-           testProperty "arc start point is origin + the starting direction" $ \s e ->
-             s /= e ==>
-               pathVertices (arc s e :: Path R2) ^? _head . _head =~ Just (origin .+^ fromDirection s)
-           , testProperty "arc end point is origin + ending direction, for non-circles" $ \s e ->
-             s /= e && e^-^s < fullTurn ==>
-               pathVertices (arc s e :: Path R2) ^? _head . _last =~ Just (origin .+^ fromDirection e)
-           , testProperty "arc returns a loop when the Angles are more than a fullTurn apart" $ \s e ->
-             e ^-^ s >= fullTurn ==>
-               isLoop $ (arc s e :: Trail R2)
+           testProperty "arc start point is at radius 1 in the starting direction" $ \d a ->
+               pathVertices (arc d a :: Path R2) ^? _head . _head =~ Just (origin .+^ fromDirection d )
+           , testProperty "arc end point is at radius 1 in the ending direction" $ \d a ->
+               pathVertices (arc d a :: Path R2) ^? _head . _last =~ Just (origin .+^ fromDirection (rotate a d))
          ]
 
     , testGroup "TwoD.Types" [

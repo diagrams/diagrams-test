@@ -47,6 +47,15 @@ instance Approx (Offset Closed R2) where
 instance Approx (Segment Closed R2) where
     Linear o0 =~ Linear o1 = o0 =~ o1
     Cubic c0 d0 o0 =~ Cubic c1 d1 o1 = c0 =~ c1 && d0 =~ d1 && o0 =~ o1
+    _ =~ _ = False
+    -- The above is conservative:
+    -- Cubic never equals Linear even if they describe the same points
+
+instance Approx (Trail' Line R2) where
+    l0 =~ l1 = and $ zipWith (=~) (lineSegments l0) (lineSegments l1)
+
+instance Approx (Trail' Loop R2) where
+    l0 =~ l1 = fst (loopSegments l0) =~ fst (loopSegments l1)
 
 instance Approx (Trail R2) where
     t0 =~ t1 = and $ zipWith (=~) (trailSegments t0) (trailSegments t1)
@@ -59,6 +68,14 @@ instance Approx a => Approx (Maybe a) where
     Nothing =~ Just _ = False
     Just _ =~ Nothing = False
     Just l =~ Just r = l =~ r
+
+-- These may be too general
+instance Approx a => Approx [a] where
+    a =~ b = and $ zipWith (=~) a b
+
+instance (Approx a, Approx b) => Approx (a, b) where
+    (a0, b0) =~ (a1,b1) = (a0 =~ a1) && (b0 =~ b1)
+
 ------------------------------------------------------------
 -- Arbitrary instances for Points, Paths
 
@@ -85,6 +102,15 @@ instance Arbitrary (Offset Closed R2) where
 
 instance Arbitrary (Segment Closed R2) where
     arbitrary = oneof [Linear <$> arbitrary, Cubic <$> arbitrary <*> arbitrary <*> arbitrary]
+
+instance Arbitrary (Trail' Line R2) where
+    arbitrary = lineFromSegments <$> arbitrary
+
+instance Arbitrary (Trail' Loop R2) where
+    arbitrary = closeLine <$> arbitrary
+
+instance Arbitrary (Trail R2) where
+    arbitrary = oneof [Trail <$> (arbitrary :: Gen (Trail' Loop R2)), Trail <$> (arbitrary :: Gen (Trail' Line R2))]
 ------------------------------------------------------------
 -- NFData instances for Paths, all trivial
 
@@ -128,11 +154,18 @@ tests = [
          testProperty "solutions found satisfy quadratic equation" $
          \a b c -> let sat x =  a * x * x + b * x + c =~ (0 :: Double) in all sat (quadForm a b c)
 -- could verify number of solutions, but we would just duplicate the function definition
-
-        , testProperty "solutions found satisfy quadratic equation" $
+        , testProperty "solutions found satisfy cubic equation" $
          \a b c d -> let sat x =  a * x * x * x + b * x * x + c * x + d =~ (0 :: Double) in all sat (cubForm a b c d)
-
-                    ]
-      ]
+        ]
+    , testGroup "cubicSpline" [
+         testProperty "Open cubic spline interpolates all points" $
+         \pts -> length pts > 1 ==> and (zipWith (=~) pts (cubicSpline False pts :: [P2]))
+         , testProperty "Closed cubic spline interpolates all points" $
+           \pts -> length pts > 1 ==> and (zipWith (=~) pts (cubicSpline True pts :: [P2]))
+    ]
+      , testGroup "Trail" [
+         testProperty "glueLine . cutLoop === id" $
+         \t -> glueLine (cutLoop t :: Trail' Line R2) =~ t
+    ]]
 
 main = defaultMain tests

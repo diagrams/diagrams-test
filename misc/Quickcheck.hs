@@ -6,10 +6,11 @@
 import Control.Lens hiding ((#), at, from)
 import Numeric.Extras
 
-import Diagrams.Prelude
+import Data.AffineSpace.Point
 import Diagrams.Coordinates
 import Diagrams.Located
-import Data.AffineSpace.Point
+import Diagrams.Prelude
+import Diagrams.Solve
 
 import Test.Framework
 import Test.Framework.Providers.QuickCheck2
@@ -123,6 +124,15 @@ tests = [
          , testProperty "Angle vector negation squared is identity" $
            \θ -> negateV (negateV (θ :: Angle)) =~ θ
          ]
-    ]
+    , testGroup "Solve" [
+         testProperty "solutions found satisfy quadratic equation" $
+         \a b c -> let sat x =  a * x * x + b * x + c =~ (0 :: Double) in all sat (quadForm a b c)
+-- could verify number of solutions, but we would just duplicate the function definition
+
+        , testProperty "solutions found satisfy quadratic equation" $
+         \a b c d -> let sat x =  a * x * x * x + b * x * x + c * x + d =~ (0 :: Double) in all sat (cubForm a b c d)
+
+                    ]
+      ]
 
 main = defaultMain tests

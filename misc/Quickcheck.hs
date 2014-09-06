@@ -11,6 +11,7 @@ import Diagrams.Coordinates
 import Diagrams.Located
 import Diagrams.Prelude
 import Diagrams.Solve
+import Diagrams.Trail (linePoints, isLine)
 
 import Test.Framework
 import Test.Framework.Providers.QuickCheck2
@@ -165,7 +166,17 @@ tests = [
     ]
       , testGroup "Trail" [
          testProperty "glueLine . cutLoop === id" $
-         \t -> glueLine (cutLoop t :: Trail' Line R2) =~ t
+         \l -> glueLine (cutLoop l :: Trail' Line R2) =~ l
+         , testProperty "cutLoop ends at starting point" $
+           \l -> let ps = linePoints (cutLoop (l :: Trail' Loop R2) `at` origin) in (ps ^? _head) =~ (ps ^? _last)
+         , testProperty "cutTrail makes a Line" $
+           \t -> isLine (cutTrail (t :: Trail R2))
+          , testProperty "fromSegments . lineSegments === id" $
+            \l -> fromSegments (lineSegments l) =~ (l :: Trail' Line R2)
+          , testProperty "lineSegments . fromSegments === id" $
+            \segs -> lineSegments (fromSegments segs) =~ (segs :: [Segment Closed R2])
     ]]
 
-main = defaultMain tests
+-- main = defaultMain tests
+main = defaultMain $ [testProperty "cutLoop ends at starting point" $
+           \l -> let ps = linePoints (cutLoop (l :: Trail' Loop R2) `at` origin) in (ps ^? _head) =~ (ps ^? _last)]

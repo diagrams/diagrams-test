@@ -13,9 +13,9 @@ import Diagrams.Prelude
 import Diagrams.Solve
 import Diagrams.Trail (linePoints, isLine)
 
-import Test.Framework
-import Test.Framework.Providers.QuickCheck2
-import Test.QuickCheck
+import Test.Tasty
+import Test.Tasty.QuickCheck
+
 import Control.DeepSeq
 
 ------------------------------------------------------------
@@ -121,9 +121,10 @@ instance NFData v => NFData (Point v) where
     rnf p = rnf $ unPoint p
 
 ------------------------------------------------------------
--- Some unit tests to start with
+-- Some quickcheck tests to start with
 
-tests = [
+tests = testGroup "Properties" 
+         [
     testGroup "TwoD.Arc" [
            testProperty "arc start point is at radius 1 in the starting direction" $ \d a ->
                pathVertices (arc d a :: Path R2) ^? _head . _head =~ Just (origin .+^ fromDirection d )
@@ -177,6 +178,6 @@ tests = [
             \segs -> lineSegments (fromSegments segs) =~ (segs :: [Segment Closed R2])
     ]]
 
--- main = defaultMain tests
-main = defaultMain $ [testProperty "cutLoop ends at starting point" $
-           \l -> let ps = linePoints (cutLoop (l :: Trail' Loop R2) `at` origin) in (ps ^? _head) =~ (ps ^? _last)]
+main = defaultMain tests
+-- main = defaultMain $ [testProperty "cutLoop ends at starting point" $
+           -- \l -> let ps = linePoints (cutLoop (l :: Trail' Loop R2) `at` origin) in (ps ^? _head) =~ (ps ^? _last)]

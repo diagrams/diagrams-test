@@ -14,7 +14,13 @@ import           Test.Tasty.HUnit
 import           Data.Maybe
 
 tests :: TestTree
-tests = testGroup "solids"
+tests = testGroup "3D"
+        [ solids
+        , csg
+        ]
+
+solids :: TestTree
+solids = testGroup "solids"
         [ testGroup "sphere"
           [ testGroup "Inside Query"
             [ testCase "origin is inside" $ assertInside True sphere origin
@@ -128,11 +134,77 @@ tests = testGroup "solids"
      ]
    ]
 
+csg :: TestTree
+csg = testGroup "csg"
+      [ testGroup "union"
+        [ testGroup "Inside"
+          [ testCase "-x axis inside" $
+            assertInside True  sphereUnion (mkP3 (-oneMinus) 0 0)
+          , testCase "-x axis outside" $
+            assertInside False sphereUnion (mkP3  (-onePlus) 0 0)
+          , testCase "+x axis inside" $
+            assertInside True sphereUnion (mkP3 (1.5 - slight) 0 0)
+          ]
+        , testGroup "Trace"
+          [ testCase "+x from origin" $
+            fromJust (rayTraceV origin unitX sphereUnion) `nearly` (1.5 *^ unitX)
+          , testCase "-x from origin" $
+            fromJust (rayTraceV origin unit_X sphereUnion) `nearly` (-1 *^ unitX)
+          ]
+        , testGroup "Envelope"
+          [ testCase "+x from origin" $ envelopeV unitX sphereUnion @?= (1.5 *^ unitX)
+          , testCase "-x from origin" $ envelopeV unit_X sphereUnion @?= (-1 *^ unitX)
+          ]
+        ]
+      , testGroup "intersection"
+        [ testGroup "Inside Query"
+          [ testCase "-x axis inside" $
+            assertInside True sphereIntersection (mkP3 (-0.5 + slight) 0 0)
+          , testCase "-x axis outside" $
+            assertInside False sphereIntersection (mkP3 (-0.5 - slight) 0 0)
+          , testCase "+x axis inside" $
+            assertInside True sphereIntersection (mkP3 oneMinus 0 0)
+          , testCase "+x axis outside" $
+            assertInside False sphereIntersection (mkP3 onePlus 0 0)
+          ]
+        , testGroup "Trace"
+          [ testCase "+x from origin" $
+            fromJust (rayTraceV origin unitX sphereIntersection) `nearly` unitX
+          , testCase "-x from origin" $
+            fromJust (rayTraceV origin unit_X sphereIntersection) `nearly` (-0.5 *^ unitX)
+          ]
+        ]
+      , testGroup "difference"
+        [ testGroup "Inside Query"
+          [ testCase "-x axis inside" $
+            assertInside True sphereDifference (mkP3 (-oneMinus) 0 0)
+          , testCase "-x axis outside" $
+            assertInside False sphereDifference (mkP3 (-onePlus) 0 0)
+          , testCase "+x axis inside" $
+            assertInside True sphereDifference (mkP3 (0.5 - slight) 0 0)
+          , testCase "+x axis outside" $
+            assertInside False sphereDifference (mkP3 (0.5 + slight) 0 0)
+          ]
+        , testGroup "Trace"
+          [ testCase "+x from origin" $
+            fromJust (rayTraceV origin unitX sphereDifference) `nearly` (0.5 *^ unitX)
+          , testCase "-x from origin" $
+            fromJust (rayTraceV origin unit_X sphereDifference) `nearly` unit_X
+          ]
+        ]
+      ]
+
+
 -- Conveniences to avoid repetition
 
--- constrain to Double to reduce inline type signatures in this module
-assertInside :: (Inside t, Vn t ~ V3 Double) => Bool -> t -> P3 Double -> Assertion
-assertInside result t p  = result @?= getAny (runQuery (inside t) p)
+sphereUnion :: CSG Double
+sphereUnion = union sphere (translateX 0.5 sphere)
+
+sphereIntersection :: CSG Double
+sphereIntersection = intersection sphere (translateX 0.5 sphere)
+
+sphereDifference :: CSG Double
+sphereDifference = difference sphere (translateX 1.5 sphere)
 
 -- | near enough for test success
 slight :: Double
@@ -146,13 +218,6 @@ onePlus = 1 + slight
 oneMinus :: Double
 oneMinus = 1 - slight
 
-nearly :: Epsilon a => a -> a -> Assertion
-nearly a b = assertBool "Expression was not near enough to zero" $
-             nearZero (a - b)
-
-assertNothing :: Maybe a -> Assertion
-assertNothing = assertBool "Expression was not Nothing" . isNothing
-
 aboveOrigin :: Point V3 Double
 aboveOrigin = mkP3 0 0 slight
 
@@ -161,3 +226,14 @@ zOnePlus = mkP3 0 0 onePlus
 
 zOneMinus :: Point V3 Double
 zOneMinus = mkP3 0 0 oneMinus
+
+nearly :: Epsilon a => a -> a -> Assertion
+nearly a b = assertBool "Expression was not near enough to zero" $
+             nearZero (a - b)
+
+-- constrain to Double to reduce inline type signatures in this module
+assertInside :: (Inside t, Vn t ~ V3 Double) => Bool -> t -> P3 Double -> Assertion
+assertInside result t p  = result @?= getAny (runQuery (inside t) p)
+
+assertNothing :: Maybe a -> Assertion
+assertNothing = assertBool "Expression was not Nothing" . isNothing

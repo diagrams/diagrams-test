@@ -4,6 +4,8 @@
 {-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+module Quickcheck where
+
 import           Control.Lens              hiding (at, from, ( # ))
 import           Numeric.Extras
 
@@ -177,5 +179,3 @@ tests = testGroup "Properties"
           , testProperty "lineSegments . fromSegments === id" $
             \segs -> lineSegments (fromSegments segs) =~ (segs :: [Segment Closed V2 Double])
     ]]
-
-main = defaultMain tests

@@ -18,3 +18,12 @@ install:
 script:
   - cd misc
   - for f in *.{hs,lhs}; do ghc --make $f; done
+
+notifications:
+  email: false
+  irc:
+    channels:
+      - irc.freenode.org#diagrams
+    skip_join: true
+    template:
+      - "\x0313diagrams-lib\x03/\x0306%{branch}\x03 \x0314%{commit}\x03 %{build_url} %{message}"

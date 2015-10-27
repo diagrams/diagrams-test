@@ -116,11 +116,6 @@ instance (Arbitrary n, Floating n, Ord n) => Arbitrary (Trail' Loop V2 n) where
 
 instance (Arbitrary n, Floating n, Ord n) => Arbitrary (Trail V2 n) where
     arbitrary = oneof [Trail <$> (arbitrary :: Gen (Trail' Loop V2 n)), Trail <$> (arbitrary :: Gen (Trail' Line V2 n))]
-------------------------------------------------------------
--- NFData instances for Paths, all trivial
-
-instance NFData (v n) => NFData (Point v n) where
-    rnf p = rnf $ view _Point p
 
 ------------------------------------------------------------
 -- Some quickcheck tests to start with
